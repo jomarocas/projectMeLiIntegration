@@ -1,0 +1,76 @@
+# Proyecto de Integración con MercadoLibre
+
+Este proyecto se centra en la integración con la API de MercadoLibre para obtener información sobre productos y almacenarla en una base de datos. A continuación, se describen los pasos para configurar y ejecutar el proyecto en tu entorno local.
+
+## Requisitos
+
+- Python 3.x (se recomienda Python 3.6 o superior)
+- Pip (instalador de paquetes de Python)
+- Docker (opcional, para ejecutar en contenedor)
+
+## Configuración del Entorno
+
+1. **Instalar Python**: Asegúrate de tener Python instalado en tu sistema. Puedes descargar la última versión de Python desde el sitio web oficial: https://www.python.org/downloads/
+
+2. **Configurar un entorno virtual**: Se recomienda utilizar un entorno virtual para aislar las dependencias del proyecto. Para crear un entorno virtual llamado 'meli', ejecuta el siguiente comando:
+
+    ```
+    python -m venv meli
+    ```
+
+3. **Activar el entorno virtual**: Activa el entorno virtual para que todas las dependencias se instalen en él:
+
+    - En Windows:
+
+    ```
+    meli\Scripts\activate
+    ```
+
+    - En macOS y Linux:
+
+    ```
+    source meli/bin/activate
+    ```
+
+4. **Instalar las dependencias**: Utiliza pip para instalar las dependencias del proyecto desde el archivo 'requirements.txt':
+
+    ```
+    pip install -r requirements.txt
+    ```
+
+5. **Configurar variables de entorno**: Crea un archivo '.env' en la raíz del proyecto con las siguientes variables de entorno:
+
+    ```
+    ENDPOINTMELI=https://api.mercadolibre.com
+    CLIENTSECRET=TU_CLIENT_SECRET
+    APPID=TU_APP_ID
+    FILE=ruta_del_archivo.csv
+    SEPARATOR=,
+    ENCODING=utf-8
+    ```
+
+    Asegúrate de reemplazar 'TU_CLIENT_SECRET' y 'TU_APP_ID' con tus propias credenciales de MercadoLibre. El resto de las variables también pueden ser configuradas según tus necesidades.
+
+6. **Ejecutar la aplicación**: Ahora puedes ejecutar la aplicación Python. Dependiendo de cómo esté estructurado tu código, podrías ejecutarlo usando algo como:
+
+    ```
+    python tu_aplicacion.py
+    ```
+
+## Ejecución en un Contenedor (no funciona actualmente)
+
+Si deseas ejecutar la aplicación en un contenedor Docker, puedes utilizar el archivo 'Dockerfile' proporcionado en el proyecto. Asegúrate de tener Docker instalado y sigue estos pasos:
+
+1. **Construir la imagen del contenedor**:
+
+    ```
+    docker build -t mi-imagen-meli .
+    ```
+
+2. **Ejecutar el contenedor**:
+
+    ```
+    docker run -p 5000:5000 mi-imagen-meli
+    ```
+
+    Esto iniciará la aplicación en el puerto 5000 del contenedor. Puedes ajustar el mapeo del puerto según tus necesidades.
