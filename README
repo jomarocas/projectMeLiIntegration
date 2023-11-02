@@ -38,7 +38,7 @@ Este proyecto se centra en la integración con la API de MercadoLibre para obten
     pip install -r requirements.txt
     ```
 
-5. **Configurar variables de entorno**: Crea un archivo '.env' en la raíz del proyecto con las siguientes variables de entorno:
+5. **Configurar variables de entorno**: Modifica el archivo '.env' en la raíz del proyecto con las siguientes variables de entorno:
 
     ```
     ENDPOINTMELI=https://api.mercadolibre.com
@@ -51,10 +51,10 @@ Este proyecto se centra en la integración con la API de MercadoLibre para obten
 
     Asegúrate de reemplazar 'TU_CLIENT_SECRET' y 'TU_APP_ID' con tus propias credenciales de MercadoLibre. El resto de las variables también pueden ser configuradas según tus necesidades.
 
-6. **Ejecutar la aplicación**: Ahora puedes ejecutar la aplicación Python. Dependiendo de cómo esté estructurado tu código, podrías ejecutarlo usando algo como:
+6. **Ejecutar la aplicación**: Ahora puedes ejecutar la aplicación. 
 
     ```
-    python tu_aplicacion.py
+    python main.py
     ```
 
 ## Ejecución en un Contenedor (no funciona actualmente)
