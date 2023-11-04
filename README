@@ -1,46 +1,46 @@
 # Proyecto de Integración con MercadoLibre
 
-Este proyecto se centra en la integración con la API de MercadoLibre para obtener información sobre productos y almacenarla en una base de datos. A continuación, se describen los pasos para configurar y ejecutar el proyecto en tu entorno local.
+Este proyecto se enfoca en la integración con la API de MercadoLibre para obtener información sobre productos y almacenarla en una base de datos. A continuación, se describen los pasos para configurar y ejecutar el proyecto en tu entorno local.
 
 ## Requisitos
 
 - Python 3.x (se recomienda Python 3.6 o superior)
-- Pip (instalador de paquetes de Python)
-- Docker (opcional, para ejecutar en contenedor)
+- Pip (el instalador de paquetes de Python)
+- Docker (para ejecutar la base de datos)
 
 ## Configuración del Entorno
 
-1. **Instalar Python**: Asegúrate de tener Python instalado en tu sistema. Puedes descargar la última versión de Python desde el sitio web oficial: https://www.python.org/downloads/
+1. **Instalación de Python**: Asegúrate de tener Python instalado en tu sistema. Puedes descargar la última versión de Python desde el sitio web oficial: [Descargar Python](https://www.python.org/downloads/)
 
-2. **Configurar un entorno virtual**: Se recomienda utilizar un entorno virtual para aislar las dependencias del proyecto. Para crear un entorno virtual llamado 'meli', ejecuta el siguiente comando:
+2. **Configuración de un entorno virtual**: Se recomienda utilizar un entorno virtual para aislar las dependencias del proyecto. Para crear un entorno virtual llamado 'meli', ejecuta el siguiente comando:
 
-    ```
+    ```bash
     python -m venv meli
     ```
 
-3. **Activar el entorno virtual**: Activa el entorno virtual para que todas las dependencias se instalen en él:
+3. **Activación del entorno virtual**: Activa el entorno virtual para que todas las dependencias se instalen en él:
 
     - En Windows:
 
-    ```
+    ```bash
     meli\Scripts\activate
     ```
 
     - En macOS y Linux:
 
-    ```
+    ```bash
     source meli/bin/activate
     ```
 
-4. **Instalar las dependencias**: Utiliza pip para instalar las dependencias del proyecto desde el archivo 'requirements.txt':
+4. **Instalación de las dependencias**: Utiliza pip para instalar las dependencias del proyecto desde el archivo 'requirements.txt':
 
-    ```
+    ```bash
     pip install -r requirements.txt
     ```
 
-5. **Configurar variables de entorno**: Modifica el archivo '.env' en la raíz del proyecto con las siguientes variables de entorno:
+5. **Configuración de variables de entorno**: Modifica el archivo '.env' en la raíz del proyecto con las siguientes variables de entorno:
 
-    ```
+    ```bash
     ENDPOINTMELI=https://api.mercadolibre.com
     CLIENTSECRET=TU_CLIENT_SECRET
     APPID=TU_APP_ID
@@ -49,28 +49,83 @@ Este proyecto se centra en la integración con la API de MercadoLibre para obten
     ENCODING=utf-8
     ```
 
-    Asegúrate de reemplazar 'TU_CLIENT_SECRET' y 'TU_APP_ID' con tus propias credenciales de MercadoLibre. El resto de las variables también pueden ser configuradas según tus necesidades.
+    Asegúrate de reemplazar 'TU_CLIENT_SECRET' y 'TU_APP_ID' con tus propias credenciales de MercadoLibre. Las demás variables también pueden configurarse según tus necesidades.
 
-6. **Ejecutar la aplicación**: Ahora puedes ejecutar la aplicación. 
+6. **Ejecución de la aplicación**: Ahora puedes ejecutar la aplicación.
 
-    ```
+    ```bash
     python main.py
     ```
 
-## Ejecución en un Contenedor (no funciona actualmente)
-
-Si deseas ejecutar la aplicación en un contenedor Docker, puedes utilizar el archivo 'Dockerfile' proporcionado en el proyecto. Asegúrate de tener Docker instalado y sigue estos pasos:
-
-1. **Construir la imagen del contenedor**:
+7. **Acceso al endpoint**: Asegúrate de tener el archivo de la aplicación en la raíz y que el nombre del archivo coincida con el definido en la variable 'FILE' del archivo .env. Luego, puedes realizar una solicitud GET al siguiente endpoint:
 
     ```
-    docker build -t mi-imagen-meli .
+    http://127.0.0.1:5000/process_file
     ```
 
-2. **Ejecutar el contenedor**:
+## Ejecución en un Contenedor de la Base de Datos
 
-    ```
-    docker run -p 5000:5000 mi-imagen-meli
+Para ejecutar esta parte en la base de datos, asegúrate de tener Docker instalado.
+
+1. **Ejecución de la base de datos**:
+
+    ```bash
+    docker run -d -p 27018:27017 --name mongodb mongo
     ```
 
-    Esto iniciará la aplicación en el puerto 5000 del contenedor. Puedes ajustar el mapeo del puerto según tus necesidades.
+    Esto iniciará la base de datos en el puerto 27018 para evitar posibles conflictos si tienes una instancia local de MongoDB. Puedes ajustar el mapeo del puerto según tus necesidades.
+
+2. **Leer la base de datos**: 
+    Asegúrate de tener el cliente de MongoDB instalado. Desde la consola, puedes acceder a la base de datos con el siguiente comando:
+
+    ```bash
+    mongo --port 27018
+    ```
+
+    Luego, utiliza los siguientes comandos:
+
+    ```bash
+    use meli
+    ```
+
+    Y, por último:
+
+    ```bash
+    db.datacollection.find()
+    ```
+
+## Desafío Teórico
+
+1. **Procesos, Hilos y Corrutinas**:
+
+   **Procesos**:
+   - Procesamiento intensivo en CPU: Ideal para tareas que requieren cálculos pesados en la CPU, como procesamiento de imágenes o simulaciones numéricas.
+   - Paralelización de tareas: Adecuado para tareas independientes que pueden ejecutarse simultáneamente.
+
+   **Hilos**:
+   - E/S intensiva: Eficiente para operaciones de entrada/salida, como lectura/escritura de archivos o solicitudes de red.
+   - Multitareas en aplicaciones de interfaz de usuario: Útil para mantener la capacidad de respuesta de la interfaz mientras se realizan tareas en segundo plano.
+
+   **Corrutinas**:
+   - Programación asíncrona: Excelente para aplicaciones con E/S intensiva o comunicación de red en entornos con alta concurrencia, como servidores web.
+   - Escalabilidad y rendimiento en aplicaciones web: Ayuda a lograr un alto rendimiento y escalabilidad en servidores web y aplicaciones con muchos clientes concurrentes.
+
+2. **Optimización de Recursos**:
+
+   Para consultar información en una API HTTP para 1,000,000 de elementos, considera las siguientes estrategias:
+
+   - Uso de concurrencia o paralelismo para realizar solicitudes simultáneas y reducir el tiempo total.
+   - División de las consultas en lotes para controlar la carga en la API y el sistema operativo.
+   - Implementación de una caché de resultados para evitar solicitudes repetidas.
+   - Gestión de errores y reintentos para manejar problemas de red o temporales en la API y garantizar que no se pierda información.
+
+   En resumen, se recomienda dividir y conquistar utilizando técnicas de concurrencia, gestionar errores y optimizar recursos locales y remotos para un procesamiento eficiente de una gran cantidad de elementos a través de una API HTTP.
+
+3. **Análisis de Complejidad**:
+
+   - Algoritmo A (O(n^2)): Adecuado para conjuntos de datos pequeños o moderados, pero puede volverse ineficiente con datos grandes.
+   - Algoritmo B (O(n^3)): Menos eficiente que A en la mayoría de los casos y generalmente se descartaría.
+   - Algoritmo C (O(2^n)): Complejidad exponencial, se descartaría en la mayoría de los casos debido a su alto costo computacional.
+   - Algoritmo D (O(n log n)): Eficiente para conjuntos de datos grandes y apropiado para problemas de ordenamiento y búsqueda. Generalmente, sería la elección preferida.
+
+   En resumen, se favorecería el Algoritmo D debido a su eficiencia en conjuntos de datos más grandes. Los Algoritmos A y B serían adecuados en situaciones específicas, y el Algoritmo C se evitaría debido a su complejidad exponencial.

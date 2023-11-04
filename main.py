@@ -1,9 +1,13 @@
+from more_itertools import chunked
 from dotenv import load_dotenv
 import os
 import pandas as pd
 import requests
 import json
 from flask import Flask, jsonify
+from db import database_insertion
+from endpoints import endpoint_currency, endpoint_users, endpoint_category, get_access_token
+from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 
@@ -14,103 +18,40 @@ load_dotenv()
 file = os.getenv('FILE')
 separator = os.getenv('SEPARATOR')
 encoding = os.getenv('ENCODING')
+ENDPOINTMELI = os.getenv('ENDPOINTMELI')
 
-@app.route('/procesar_archivo', methods=['GET'])
 
-def procesar_archivo():
+# Estructuras para almacenar los datos
+item_data = []
+category_data = {}
+currency_data = {}
+user_data = {}
 
+# Función para procesar un elemento
+def process_item(item):
     try:
-        # Lectura del archivo
-        df = pd.read_csv(file, sep=separator, encoding=encoding)
+        # Divide el elemento en 'site' e 'id'
+        site, id = item[:3], item[3:]
+        
+        # Obtén el token de acceso
+        access_token = get_access_token()
 
-        # Crear la clave del ítem
-        df['clave'] = df['site'] + df['id'].astype(str)
+        # Consulta la API de productos
+        item_info = get_item_info(site, id, access_token)
 
-        # Consulta a las APIs desde el archivo .env
-        ENDPOINTMELI = os.getenv('ENDPOINTMELI')
-        CLIENTSECRET = os.getenv('CLIENTSECRET')
-        APPID = os.getenv('APPID')
+        # Si la solicitud a la API de productos fue exitosa y el elemento existe
+        if item_info:
+            # Consulta la categoría
+            category_name = endpoint_category(item_info, category_data)
 
-        # Obtener el ACCESS_TOKEN
-        access_token_url = f'{ENDPOINTMELI}/oauth/token'
-        access_token_payload = {
-            'grant_type': 'client_credentials',
-            'client_id': APPID,
-            'client_secret': CLIENTSECRET
-        }
+            # Consulta la descripción de la moneda
+            currency_description = endpoint_currency(item_info, currency_data)
 
-        access_token_response = requests.post(access_token_url, data=access_token_payload)
-        access_token_data = access_token_response.json()
-        access_token = access_token_data.get('access_token', '')
-
-        # Estructuras para almacenar los datos
-        item_data = []
-        category_data = {}
-        currency_data = {}
-        user_data = {}
-    except requests.exceptions.HTTPError as err:
-        if access_token_response.status_code == 500:
-            print('Error: ', access_token_response.status_code)
-        else:
-            print('Otro error HTTP: ', err)
-    except Exception as e:
-        print('Algo salió mal: ', e)    
-
-
-    for clave in df['clave']:
-        try:
-            site, id = clave[:3], clave[3:]
-            # Consulta la API de categorias
-            item_url = f'{ENDPOINTMELI}/sites/{site}/search?category={id}'
-            headers = {
-                'Authorization': f'Bearer {access_token}'
-            }
-            item_response = requests.get(item_url)
-            item_info = json.loads(item_response.text)
-            
-            if 'price' in item_info and 'start_time' in item_info:
-                price = item_info['price']
-                start_time = item_info['start_time']
-            else:
-                price = None
-                start_time = None
-            # Consulta la API de categorías
-            if 'category_id' in item_info:
-                category_id = item_info['category_id']
-                if category_id not in category_data:
-                    category_url = ENDPOINTMELI + '/categories/' + category_id
-                    category_response = requests.get(category_url)
-                    category_info = json.loads(category_response.text)
-                    category_data[category_id] = category_info.get('name', None)
-                category_name = category_data[category_id]
-            else:
-                category_name = None
-
-            # Consulta la API de monedas (currencies)
-            if 'currency_id' in item_info:
-                currency_id = item_info['currency_id']
-                if currency_id not in currency_data:
-                    currency_url = ENDPOINTMELI + '/currencies/' + currency_id
-                    currency_response = requests.get(currency_url)
-                    currency_info = json.loads(currency_response.text)
-                    currency_data[currency_id] = currency_info.get('description', None)
-                currency_description = currency_data[currency_id]
-            else:
-                currency_description = None
-
-            # Consulta la API de usuarios (sellers)
-            if 'seller_id' in item_info:
-                seller_id = item_info['seller_id']
-                if seller_id not in user_data:
-                    user_url = ENDPOINTMELI + '/users/' + seller_id
-                    user_response = requests.get(user_url)
-                    user_info = json.loads(user_response.text)
-                    user_data[seller_id] = user_info.get('nickname', None)
-                seller_nickname = user_data[seller_id]
-            else:
-                seller_nickname = None
-
-            # Almacena los datos obtenidos en una estructura
+            # Consulta el nombre del vendedor
+            seller_nickname = endpoint_users(item_info, user_data)
+            price = item_info.get('price', '')
+            start_time = item_info.get('start_time', '')
+            # Agrega los datos a la lista de elementos
             item_data.append({
                 'site': site,
                 'id': id,
@@ -120,15 +61,64 @@ def procesar_archivo():
                 'description': currency_description,
                 'nickname': seller_nickname
             })
-            # return jsonify(item_data)
-        except requests.exceptions.HTTPError as err:
-            if item_response.status_code == 500:
-                print('Error: ', item_response.status_code)
-            else:
-                print('Otro error HTTP: ', err)
-        except Exception as e:
-            print('Algo salió mal: ', e)
-    
+    except requests.exceptions.RequestException as e:
+        print(f'Error en la solicitud de elementos: {str(e)}')
+    except Exception as e:
+        print(f'Error inesperado: {str(e)}')
+
+
+# Función para procesar lotes de elementos en hilos
+def process_batch(df):
+    items = df['clave']
+    total_items = len(items)
+    batch_size = 100
+
+    with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+        for batch in chunked(items, batch_size):
+            executor.map(process_item, batch)
+            print(f'Procesados {len(batch)} de {total_items} elementos.')
+
+
+# Endpoint para procesar el archivo
+@app.route('/process_file', methods=['GET'])
+def process_file():
+    try:
+        # Lectura del archivo
+        df = pd.read_csv(file, sep=separator, encoding=encoding)
+
+        # Crear la clave del elemento
+        df['clave'] = df['site'] + df['id'].astype(str)
+
+        # Procesar el archivo en lotes
+        process_batch(df)
+        if item_data:
+            # Inserta los datos en la base de datos
+            print('database_insertion.',item_data)
+            database_insertion(item_data)
+            response = jsonify({"message": "Proceso completado"})
+            return response
+        response = jsonify({"message": "Proceso no completado"})
+        return response
+
+    except Exception as e:
+        print(f'Error inesperado en process_file: {str(e)}')
+        return jsonify({"error": "Ocurrió un error al procesar el archivo"}), 500
+
+
+# Función para consultar la API de productos
+def get_item_info(site, id, access_token):
+    try:
+        item_url = f'{ENDPOINTMELI}/items/{site}{id}'
+        headers = {
+            'Authorization': f'Bearer {access_token}'
+        }
+        item_response = requests.get(item_url, headers=headers)
+        item_response.raise_for_status()
+        return json.loads(item_response.text)
+    except requests.exceptions.RequestException as e:
+        print(f'Error en la solicitud a la API de productos: {str(e)}')
+        return {}  # Devuelve un diccionario vacío en caso de error
+
 
 if __name__ == '__main__':
     app.run(debug=True)

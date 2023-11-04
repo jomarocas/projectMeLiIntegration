@@ -1,14 +1,22 @@
 from pymongo import MongoClient
-import json
+import os
+import pymongo.errors
 
-# Conexión a MongoDB
-client = MongoClient('mongodb://myUser:myUserPassword@127.0.0.1:27017/')
-database = client['nombre_de_tu_base_de_datos']
-collection = database['nombre_de_tu_colección']
+MONGODBURL = os.getenv('MONGODBURL')
 
-# Insertar datos en MongoDB
-for item in item_data:
-    collection.insert_one(item)
+def database_insertion(item_data_batch):
+    try:
+        # Crear la conexión
+        client = MongoClient(MONGODBURL)
+        db = client['meli']
+        collection = db['datacollection']
 
-with open('datos.json', 'w', encoding='utf-8') as json_file:
-    json.dump(item_data, json_file, ensure_ascii=False, indent=4)
+        if item_data_batch:
+            print('item_data_batch.',item_data_batch)
+            # Utiliza insert_many para insertar los documentos en un lote
+            collection.insert_many(item_data_batch)
+        
+    except pymongo.errors.ConnectionFailure as cf_err:
+        print('Error de conexión a MongoDB:', cf_err)
+    except Exception as e:
+        print('Algo salió mal en mongo: ', e)
